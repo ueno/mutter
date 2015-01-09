@@ -49,12 +49,15 @@ mutter_built_sources += \
 	gtk-shell-server-protocol.h		\
 	xdg-shell-protocol.c			\
 	xdg-shell-server-protocol.h		\
+	wayland-tablet-protocol.c		\
+	wayland-tablet-server-protocol.h	\
 	$(NULL)
 endif
 
 wayland_protocols =				\
 	wayland/protocol/gtk-shell.xml		\
 	wayland/protocol/xdg-shell.xml		\
+	wayland/protocol/wayland-tablet.xml	\
 	$(NULL)
 
 libmutter_la_SOURCES =				\
