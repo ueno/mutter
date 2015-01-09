@@ -94,6 +94,7 @@ meta_wayland_tablet_handle_event (MetaWaylandTablet  *tablet,
     {
     case CLUTTER_MOTION:
       handle_motion_event (tablet, event);
+      break;
     case CLUTTER_BUTTON_PRESS:
     case CLUTTER_BUTTON_RELEASE:
       handle_button_event (tablet, event);
