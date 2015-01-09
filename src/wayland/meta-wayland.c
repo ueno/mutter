@@ -39,6 +39,7 @@
 #include "meta-wayland-seat.h"
 #include "meta-wayland-outputs.h"
 #include "meta-wayland-data-device.h"
+#include "meta-wayland-tablet-manager.h"
 
 static MetaWaylandCompositor _meta_wayland_compositor;
 
@@ -311,6 +312,7 @@ meta_wayland_init (void)
   meta_wayland_data_device_manager_init (compositor);
   meta_wayland_shell_init (compositor);
   meta_wayland_seat_init (compositor);
+  meta_wayland_tablet_manager_init (compositor);
 
   compositor->display_name = wl_display_add_socket_auto (compositor->wayland_display);
   if (compositor->display_name == NULL)
