@@ -32,6 +32,7 @@
 #include "meta-wayland-versions.h"
 #include "meta-wayland-surface.h"
 #include "meta-wayland-seat.h"
+#include "meta-wayland-tablet-manager.h"
 
 typedef struct
 {
@@ -64,6 +65,7 @@ struct _MetaWaylandCompositor
   MetaXWaylandManager xwayland_manager;
 
   MetaWaylandSeat *seat;
+  MetaWaylandTabletManager *tablet_manager;
 };
 
 #endif /* META_WAYLAND_PRIVATE_H */

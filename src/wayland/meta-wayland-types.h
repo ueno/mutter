@@ -33,6 +33,7 @@ typedef struct _MetaWaylandTouch MetaWaylandTouch;
 typedef struct _MetaWaylandDataSource MetaWaylandDataSource;
 typedef struct _MetaWaylandDataDevice MetaWaylandDataDevice;
 
+typedef struct _MetaWaylandTabletManager MetaWaylandTabletManager;
 typedef struct _MetaWaylandTablet MetaWaylandTablet;
 
 typedef struct _MetaWaylandBuffer MetaWaylandBuffer;
