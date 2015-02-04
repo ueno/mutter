@@ -36,6 +36,8 @@ struct _MetaWaylandTablet
 
   struct wl_list resource_list;
 
+  MetaCursorRenderer *cursor_renderer;
+
   MetaWaylandSurface *current;
 };
 
@@ -57,5 +59,8 @@ struct wl_resource *
              meta_wayland_tablet_lookup_resource     (MetaWaylandTablet  *tablet,
                                                       struct wl_client   *client);
 
+void         meta_wayland_tablet_update_cursor_position (MetaWaylandTablet *tablet,
+                                                         int                new_x,
+                                                         int                new_y);
 
 #endif /* META_WAYLAND_TABLET_H */

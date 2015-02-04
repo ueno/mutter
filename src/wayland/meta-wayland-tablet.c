@@ -51,6 +51,9 @@ meta_wayland_tablet_new (ClutterInputDevice       *device,
   tablet->device = device;
   tablet->manager = manager;
 
+  tablet->cursor_renderer = meta_cursor_renderer_new ();
+  meta_cursor_renderer_set_cursor (tablet->cursor_renderer, NULL);
+
   return tablet;
 }
 
@@ -65,6 +68,7 @@ meta_wayland_tablet_free (MetaWaylandTablet *tablet)
       wl_resource_destroy (resource);
     }
 
+  g_object_unref (tablet->cursor_renderer);
   g_slice_free (MetaWaylandTablet, tablet);
 }
 
@@ -143,6 +147,14 @@ meta_wayland_tablet_create_new_resource (MetaWaylandTablet  *tablet,
   wl_list_insert (&tablet->resource_list, wl_resource_get_link (resource));
 
   return resource;
+}
+
+void
+meta_wayland_tablet_update_cursor_position (MetaWaylandTablet *tablet,
+                                            int                new_x,
+                                            int                new_y)
+{
+  meta_cursor_renderer_set_position (tablet->cursor_renderer, new_x, new_y);
 }
 
 struct wl_resource *
