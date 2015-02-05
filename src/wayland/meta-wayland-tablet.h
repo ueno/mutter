@@ -28,17 +28,28 @@
 
 #include "meta-wayland-types.h"
 #include "meta-cursor-renderer.h"
+#include "meta-wayland-tablet-tool.h"
 
 struct _MetaWaylandTablet
 {
   MetaWaylandTabletManager *manager;
   ClutterInputDevice *device;
+  GHashTable *tools;
+
+  MetaWaylandTabletTool *current_tool;
 
   struct wl_list resource_list;
+  struct wl_list focus_resource_list;
+
+  MetaWaylandSurface *focus_surface;
+  struct wl_listener focus_surface_destroy_listener;
 
   MetaCursorRenderer *cursor_renderer;
 
   MetaWaylandSurface *current;
+  GSList *buttons;
+
+  guint32 proximity_serial;
 };
 
 MetaWaylandTablet * meta_wayland_tablet_new          (ClutterInputDevice       *device,
