@@ -249,3 +249,25 @@ meta_wayland_tablet_manager_handle_event (MetaWaylandTabletManager *manager,
 
   return meta_wayland_tablet_handle_event (tablet, event);
 }
+
+void
+meta_wayland_tablet_manager_update_cursor_position (MetaWaylandTabletManager *manager,
+                                                    const ClutterEvent       *event)
+{
+  ClutterInputDevice *device;
+  MetaWaylandTablet *tablet;
+  gfloat new_x, new_y;
+
+  device = clutter_event_get_source_device (event);
+
+  if (!device)
+    return;
+
+  tablet = meta_wayland_tablet_manager_lookup_from_event (manager, event);
+
+  if (!tablet)
+    return;
+
+  clutter_event_get_coords (event, &new_x, &new_y);
+  meta_wayland_tablet_update_cursor_position (tablet, new_x, new_y);
+}

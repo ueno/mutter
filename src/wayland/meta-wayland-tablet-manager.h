@@ -47,4 +47,7 @@ void     meta_wayland_tablet_manager_update         (MetaWaylandTabletManager *m
 gboolean meta_wayland_tablet_manager_handle_event   (MetaWaylandTabletManager *manager,
                                                      const ClutterEvent       *event);
 
+void     meta_wayland_tablet_manager_update_cursor_position (MetaWaylandTabletManager *manager,
+                                                             const ClutterEvent       *event);
+
 #endif /* META_WAYLAND_TABLET_MANAGER_H */
