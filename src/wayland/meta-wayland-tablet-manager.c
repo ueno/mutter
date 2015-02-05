@@ -32,12 +32,42 @@
 
 #include "meta-wayland-private.h"
 #include "meta-wayland-tablet-manager.h"
+#include "meta-wayland-tablet-tool.h"
 #include "meta-wayland-tablet.h"
 
 static void
 unbind_resource (struct wl_resource *resource)
 {
   wl_list_remove (wl_resource_get_link (resource));
+}
+
+static void
+notify_tool_added (MetaWaylandTabletManager *manager,
+                   struct wl_resource       *client_resource,
+                   MetaWaylandTablet        *tablet,
+                   MetaWaylandTabletTool    *tool)
+{
+  struct wl_resource *tool_resource, *tablet_resource;
+
+  tablet = g_hash_table_lookup (manager->tablets, tablet->device);
+
+  if (!tablet)
+    return;
+
+  tablet_resource = meta_wayland_tablet_lookup_resource (tablet,
+                                                         wl_resource_get_client (client_resource));
+  if (!tablet_resource)
+    return;
+
+  tool_resource = meta_wayland_tablet_tool_create_new_resource (tool,
+                                                                wl_resource_get_client (client_resource),
+                                                                client_resource, 0);
+  if (!tool_resource)
+    return;
+
+  wl_tablet_manager_send_tool_added (client_resource,
+                                     tool_resource, tablet_resource,
+                                     tool->type, tool->serial, tool->axes);
 }
 
 static void
@@ -248,6 +278,18 @@ meta_wayland_tablet_manager_handle_event (MetaWaylandTabletManager *manager,
     return FALSE;
 
   return meta_wayland_tablet_handle_event (tablet, event);
+}
+
+void
+meta_wayland_tablet_manager_notify_tool (MetaWaylandTabletManager *manager,
+                                         MetaWaylandTablet        *tablet,
+                                         MetaWaylandTabletTool    *tool,
+                                         struct wl_client         *client)
+{
+  struct wl_resource *resource;
+
+  resource = wl_resource_find_for_client (&manager->resource_list, client);
+  notify_tool_added (manager, resource, tablet, tool);
 }
 
 void
