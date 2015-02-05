@@ -36,6 +36,8 @@
 #include "meta-wayland-tablet.h"
 #include "meta-wayland-tablet-tool.h"
 
+#define WL_TABLET_AXIS_MAX 65535
+
 static void meta_wayland_tablet_set_cursor_surface (MetaWaylandTablet  *tablet,
                                                     MetaWaylandSurface *surface);
 static void meta_wayland_tablet_set_focus          (MetaWaylandTablet  *tablet,
@@ -396,15 +398,195 @@ meta_wayland_tablet_update (MetaWaylandTablet  *tablet,
 }
 
 static void
+notify_down (MetaWaylandTablet  *tablet,
+             const ClutterEvent *event)
+{
+  struct wl_resource *resource;
+
+  wl_resource_for_each(resource, &tablet->focus_resource_list)
+    {
+      wl_tablet_send_down (resource, tablet->current_tool->serial,
+                           clutter_event_get_time (event));
+    }
+}
+
+static void
+notify_up (MetaWaylandTablet  *tablet,
+           const ClutterEvent *event)
+{
+  struct wl_resource *resource;
+
+  wl_resource_for_each(resource, &tablet->focus_resource_list)
+    {
+      wl_tablet_send_up (resource, clutter_event_get_time (event));
+    }
+}
+
+static void
+notify_button (MetaWaylandTablet  *tablet,
+               const ClutterEvent *event)
+{
+  struct wl_resource *resource;
+  uint32_t serial, _time;
+
+  serial = wl_display_next_serial (tablet->manager->wl_display);
+  _time = clutter_event_get_time (event);
+
+  wl_resource_for_each(resource, &tablet->focus_resource_list)
+    {
+      wl_tablet_send_button (resource, serial, _time, event->button.button,
+                             event->type == CLUTTER_BUTTON_PRESS ?
+                             WL_TABLET_BUTTON_STATE_PRESSED :
+                             WL_TABLET_BUTTON_STATE_RELEASED);
+    }
+}
+
+static void
+meta_wayland_tablet_get_relative_coordinates (MetaWaylandTablet  *tablet,
+                                              MetaWaylandSurface *surface,
+                                              wl_fixed_t         *sx,
+                                              wl_fixed_t         *sy)
+{
+  float xf = 0.0f, yf = 0.0f;
+  ClutterPoint pos;
+
+  clutter_input_device_get_coords (tablet->device, NULL, &pos);
+  clutter_actor_transform_stage_point (CLUTTER_ACTOR (meta_surface_actor_get_texture (surface->surface_actor)),
+                                       pos.x, pos.y, &xf, &yf);
+
+  *sx = wl_fixed_from_double (xf) / surface->scale;
+  *sy = wl_fixed_from_double (yf) / surface->scale;
+}
+
+static void
+notify_motion (MetaWaylandTablet  *tablet,
+               const ClutterEvent *event)
+{
+  struct wl_resource *resource;
+
+  wl_resource_for_each(resource, &tablet->focus_resource_list)
+    {
+      wl_fixed_t sx, sy;
+
+      meta_wayland_tablet_get_relative_coordinates (tablet,
+                                                    tablet->focus_surface,
+                                                    &sx, &sy);
+      wl_tablet_send_motion (resource, clutter_event_get_time (event), sx, sy);
+    }
+}
+
+static void
+notify_axis (MetaWaylandTablet  *tablet,
+             const ClutterEvent *event,
+             ClutterInputAxis    axis)
+{
+  struct wl_resource *resource;
+  ClutterInputDevice *source;
+  wl_fixed_t value;
+  guint32 _time;
+  gdouble val;
+
+  _time = clutter_event_get_time (event);
+  source = clutter_event_get_source_device (event);
+
+  if (!clutter_input_device_get_axis_value (source, event->motion.axes, axis, &val))
+    return;
+
+  value = wl_fixed_from_double (val * WL_TABLET_AXIS_MAX);
+
+  wl_resource_for_each(resource, &tablet->focus_resource_list)
+    {
+      switch (axis)
+        {
+        case CLUTTER_INPUT_AXIS_PRESSURE:
+          wl_tablet_send_pressure (resource, _time, value);
+          break;
+        case CLUTTER_INPUT_AXIS_DISTANCE:
+          wl_tablet_send_distance (resource, _time, value);
+          break;
+        default:
+          break;
+        }
+    }
+}
+
+static void
+notify_tilt (MetaWaylandTablet  *tablet,
+             const ClutterEvent *event)
+{
+  struct wl_resource *resource;
+  ClutterInputDevice *source;
+  gdouble xtilt, ytilt;
+  guint32 _time;
+
+  _time = clutter_event_get_time (event);
+  source = clutter_event_get_source_device (event);
+
+  if (!clutter_input_device_get_axis_value (source, event->motion.axes,
+                                            CLUTTER_INPUT_AXIS_XTILT, &xtilt) ||
+      !clutter_input_device_get_axis_value (source, event->motion.axes,
+                                            CLUTTER_INPUT_AXIS_XTILT, &ytilt))
+    return;
+
+  wl_resource_for_each(resource, &tablet->focus_resource_list)
+    {
+      wl_tablet_send_tilt (resource, _time,
+                           wl_fixed_from_double (xtilt * WL_TABLET_AXIS_MAX),
+                           wl_fixed_from_double (ytilt * WL_TABLET_AXIS_MAX));
+    }
+}
+
+static void
+notify_frame (MetaWaylandTablet  *tablet)
+{
+  struct wl_resource *resource;
+
+  wl_resource_for_each(resource, &tablet->focus_resource_list)
+    {
+      wl_tablet_send_frame (resource);
+    }
+}
+
+static void
+notify_axes (MetaWaylandTablet  *tablet,
+             const ClutterEvent *event)
+{
+  guint32 axes;
+
+  axes = tablet->current_tool->axes;
+
+  if (axes & WL_TABLET_TOOL_AXIS_FLAG_PRESSURE)
+    notify_axis (tablet, event, CLUTTER_INPUT_AXIS_PRESSURE);
+  if (axes & WL_TABLET_TOOL_AXIS_FLAG_DISTANCE)
+    notify_axis (tablet, event, CLUTTER_INPUT_AXIS_DISTANCE);
+  if (axes & WL_TABLET_TOOL_AXIS_FLAG_TILT)
+    notify_tilt (tablet, event);
+
+  if (axes != 0)
+    notify_frame (tablet);
+}
+
+static void
 handle_motion_event (MetaWaylandTablet  *tablet,
                      const ClutterEvent *event)
 {
+  if (!tablet->current_tool)
+    return;
+
+  notify_motion (tablet, event);
+  notify_axes (tablet, event);
 }
 
 static void
 handle_button_event (MetaWaylandTablet  *tablet,
                      const ClutterEvent *event)
 {
+  if (event->type == CLUTTER_BUTTON_PRESS && event->button.button == 1)
+    notify_down (tablet, event);
+  else if (event->type == CLUTTER_BUTTON_RELEASE && event->button.button == 1)
+    notify_up (tablet, event);
+  else
+    notify_button (tablet, event);
 }
 
 gboolean
