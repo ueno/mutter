@@ -553,6 +553,9 @@ notify_axes (MetaWaylandTablet  *tablet,
 {
   guint32 axes;
 
+  if (!event->motion.axes)
+    return;
+
   axes = tablet->current_tool->axes;
 
   if (axes & WL_TABLET_TOOL_AXIS_FLAG_PRESSURE)
