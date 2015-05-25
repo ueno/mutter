@@ -165,6 +165,7 @@ meta_wayland_seat_set_capabilities (MetaWaylandSeat *seat,
       MetaDisplay *display;
 
       meta_wayland_keyboard_init (&seat->keyboard, seat->wl_display);
+      meta_wayland_input_method_init (&seat->input_method, &seat->keyboard);
       display = meta_get_display ();
 
       /* Post-initialization, ensure the input focus is in sync */

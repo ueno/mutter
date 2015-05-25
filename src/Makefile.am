@@ -49,12 +49,18 @@ mutter_built_sources += \
 	gtk-shell-server-protocol.h		\
 	xdg-shell-protocol.c			\
 	xdg-shell-server-protocol.h		\
+	text-server-protocol.h			\
+	text-protocol.c				\
+	input-method-server-protocol.h		\
+	input-method-protocol.c			\
 	$(NULL)
 endif
 
 wayland_protocols =				\
 	wayland/protocol/gtk-shell.xml		\
 	wayland/protocol/xdg-shell.xml		\
+	wayland/protocol/text.xml		\
+	wayland/protocol/input-method.xml	\
 	$(NULL)
 
 libmutter_la_SOURCES =				\
@@ -267,6 +273,8 @@ libmutter_la_SOURCES +=				\
 	wayland/meta-wayland-versions.h		\
 	wayland/meta-wayland-outputs.c		\
 	wayland/meta-wayland-outputs.h		\
+	wayland/meta-wayland-input-method.c	\
+	wayland/meta-wayland-input-method.h	\
 	wayland/meta-window-wayland.c		\
 	wayland/meta-window-wayland.h		\
 	$(NULL)

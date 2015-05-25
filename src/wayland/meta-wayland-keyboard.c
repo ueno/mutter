@@ -239,10 +239,11 @@ keyboard_handle_focus_surface_destroy (struct wl_listener *listener, void *data)
   meta_wayland_keyboard_set_focus (keyboard, NULL);
 }
 
-static gboolean
-notify_key (MetaWaylandKeyboard *keyboard,
-            uint32_t time, uint32_t key, uint32_t state)
+static void
+default_grab_keyboard_key (MetaWaylandKeyboardGrab *grab,
+                           uint32_t time, uint32_t key, uint32_t state)
 {
+  MetaWaylandKeyboard *keyboard = grab->keyboard;
   struct wl_resource *resource;
   struct wl_list *l;
 
@@ -258,6 +259,49 @@ notify_key (MetaWaylandKeyboard *keyboard,
           wl_keyboard_send_key (resource, serial, time, key, state);
         }
     }
+}
+
+static void
+default_grab_keyboard_modifiers (MetaWaylandKeyboardGrab *grab,
+                                 uint32_t serial,
+                                 uint32_t depressed_mods,
+                                 uint32_t latched_mods,
+                                 uint32_t locked_mods,
+                                 uint32_t group)
+{
+  MetaWaylandKeyboard *keyboard = grab->keyboard;
+  struct wl_resource *resource;
+  struct wl_list *l;
+
+  l = &keyboard->focus_resource_list;
+  if (!wl_list_empty (l))
+    {
+      wl_resource_for_each (resource, l)
+        {
+          wl_keyboard_send_modifiers (resource, serial,
+                                      depressed_mods, latched_mods, locked_mods,
+                                      group);
+        }
+    }
+}
+
+static void
+default_grab_keyboard_cancel(MetaWaylandKeyboardGrab *grab)
+{
+}
+
+static const MetaWaylandKeyboardGrabInterface
+default_keyboard_grab_interface = {
+  default_grab_keyboard_key,
+  default_grab_keyboard_modifiers,
+  default_grab_keyboard_cancel
+};
+
+static gboolean
+notify_key (MetaWaylandKeyboard *keyboard,
+            uint32_t time, uint32_t key, uint32_t state)
+{
+  keyboard->grab->interface->key (keyboard->grab, time, key, state);
 
   /* Eat the key events if we have a focused surface. */
   return (keyboard->focus_surface != NULL);
@@ -266,27 +310,16 @@ notify_key (MetaWaylandKeyboard *keyboard,
 static void
 notify_modifiers (MetaWaylandKeyboard *keyboard)
 {
-  struct xkb_state *state;
-  struct wl_resource *resource;
-  struct wl_list *l;
+  uint32_t serial = wl_display_next_serial (keyboard->display);
+  struct xkb_state *state = keyboard->xkb_info.state;
+  xkb_mod_mask_t depressed_mods = xkb_state_serialize_mods (state, XKB_STATE_MODS_DEPRESSED);
+  xkb_mod_mask_t latched_mods = xkb_state_serialize_mods (state, XKB_STATE_MODS_LATCHED);
+  xkb_mod_mask_t locked_mods = xkb_state_serialize_mods (state, XKB_STATE_MODS_LOCKED);
+  xkb_layout_index_t group = xkb_state_serialize_layout (state, XKB_STATE_LAYOUT_EFFECTIVE);
 
-  state = keyboard->xkb_info.state;
-
-  l = &keyboard->focus_resource_list;
-  if (!wl_list_empty (l))
-    {
-      uint32_t serial = wl_display_next_serial (keyboard->display);
-
-      wl_resource_for_each (resource, l)
-        {
-          wl_keyboard_send_modifiers (resource,
-                                      serial,
-                                      xkb_state_serialize_mods (state, XKB_STATE_MODS_DEPRESSED),
-                                      xkb_state_serialize_mods (state, XKB_STATE_MODS_LATCHED),
-                                      xkb_state_serialize_mods (state, XKB_STATE_MODS_LOCKED),
-                                      xkb_state_serialize_layout (state, XKB_STATE_LAYOUT_EFFECTIVE));
-        }
-    }
+  keyboard->grab->interface->modifiers (keyboard->grab, serial,
+                                        depressed_mods, latched_mods,
+                                        locked_mods, group);
 }
 
 static void
@@ -384,6 +417,12 @@ meta_wayland_keyboard_init (MetaWaylandKeyboard *keyboard,
   keyboard->focus_surface_listener.notify = keyboard_handle_focus_surface_destroy;
 
   keyboard->xkb_info.keymap_fd = -1;
+
+  keyboard->default_grab.interface = &default_keyboard_grab_interface;
+  keyboard->default_grab.keyboard = keyboard;
+  keyboard->grab = &keyboard->default_grab;
+
+  wl_signal_init (&keyboard->focus_signal);
 
   keyboard->settings = g_settings_new ("org.gnome.desktop.peripherals.keyboard");
   g_signal_connect (keyboard->settings, "changed",
@@ -593,6 +632,7 @@ meta_wayland_keyboard_set_focus (MetaWaylandKeyboard *keyboard,
               broadcast_focus (keyboard, resource);
             }
         }
+      wl_signal_emit (&keyboard->focus_signal, keyboard);
     }
 }
 
@@ -643,4 +683,18 @@ meta_wayland_keyboard_create_new_resource (MetaWaylandKeyboard *keyboard,
     {
       wl_list_insert (&keyboard->resource_list, wl_resource_get_link (cr));
     }
+}
+
+void
+meta_wayland_keyboard_start_grab (MetaWaylandKeyboard *keyboard,
+                                  MetaWaylandKeyboardGrab *grab)
+{
+  keyboard->grab = grab;
+  grab->keyboard = keyboard;
+}
+
+void
+meta_wayland_keyboard_end_grab (MetaWaylandKeyboard *keyboard)
+{
+  keyboard->grab = &keyboard->default_grab;
 }

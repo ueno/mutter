@@ -29,6 +29,8 @@ typedef struct _MetaWaylandPointerGrabInterface MetaWaylandPointerGrabInterface;
 typedef struct _MetaWaylandPopupGrab MetaWaylandPopupGrab;
 typedef struct _MetaWaylandPopup MetaWaylandPopup;
 typedef struct _MetaWaylandKeyboard MetaWaylandKeyboard;
+typedef struct _MetaWaylandKeyboardGrab MetaWaylandKeyboardGrab;
+typedef struct _MetaWaylandKeyboardGrabInterface MetaWaylandKeyboardGrabInterface;
 typedef struct _MetaWaylandTouch MetaWaylandTouch;
 typedef struct _MetaWaylandDataSource MetaWaylandDataSource;
 typedef struct _MetaWaylandDataDevice MetaWaylandDataDevice;
@@ -39,5 +41,9 @@ typedef struct _MetaWaylandRegion MetaWaylandRegion;
 typedef struct _MetaWaylandSurface MetaWaylandSurface;
 
 typedef struct _MetaWaylandSerial MetaWaylandSerial;
+
+typedef struct _MetaWaylandTextInput MetaWaylandTextInput;
+typedef struct _MetaWaylandInputMethod MetaWaylandInputMethod;
+typedef struct _MetaWaylandInputMethodContext MetaWaylandInputMethodContext;
 
 #endif

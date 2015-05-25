@@ -58,6 +58,25 @@ typedef struct
   char *keymap_area;
 } MetaWaylandXkbInfo;
 
+struct _MetaWaylandKeyboardGrabInterface
+{
+  void (*key) (MetaWaylandKeyboardGrab *grab, uint32_t time,
+	       uint32_t key, uint32_t state);
+  void (*modifiers) (MetaWaylandKeyboardGrab *grab,
+		     uint32_t serial,
+		     uint32_t mods_depressed,
+		     uint32_t mods_latched,
+		     uint32_t mods_locked,
+		     uint32_t group);
+  void (*cancel) (MetaWaylandKeyboardGrab *grab);
+};
+
+struct _MetaWaylandKeyboardGrab
+{
+  const MetaWaylandKeyboardGrabInterface *interface;
+  MetaWaylandKeyboard *keyboard;
+};
+
 struct _MetaWaylandKeyboard
 {
   struct wl_display *display;
@@ -71,6 +90,14 @@ struct _MetaWaylandKeyboard
 
   MetaWaylandXkbInfo xkb_info;
   enum xkb_state_component mods_changed;
+
+  MetaWaylandKeyboardGrab *grab;
+  MetaWaylandKeyboardGrab default_grab;
+  uint32_t grab_key;
+  uint32_t grab_serial;
+  uint32_t grab_time;
+
+  struct wl_signal focus_signal;
 
   GSettings *settings;
 };
@@ -95,5 +122,10 @@ void meta_wayland_keyboard_create_new_resource (MetaWaylandKeyboard *keyboard,
                                                 struct wl_client    *client,
                                                 struct wl_resource  *seat_resource,
                                                 uint32_t id);
+
+void meta_wayland_keyboard_start_grab (MetaWaylandKeyboard *keyboard,
+				       MetaWaylandKeyboardGrab *grab);
+
+void meta_wayland_keyboard_end_grab (MetaWaylandKeyboard *keyboard);
 
 #endif /* META_WAYLAND_KEYBOARD_H */
